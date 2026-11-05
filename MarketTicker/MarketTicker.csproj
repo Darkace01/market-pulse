@@ -29,6 +29,11 @@
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 
+  <!-- Without the Windows SDK installed, feed CsWinRT the Windows metadata from the restored SDK projection package. -->
+  <PropertyGroup Condition="!Exists('$(MSBuildProgramFiles32)\Windows Kits\10\UnionMetadata')">
+    <CsWinRTWindowsMetadata>$(NuGetPackageRoot)microsoft.windows.sdk.net.ref\$(WindowsSdkPackageVersion)\winmd</CsWinRTWindowsMetadata>
+  </PropertyGroup>
+
   <!--
     Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging
     Tools extension to be activated for this project even if the Windows App SDK Nuget

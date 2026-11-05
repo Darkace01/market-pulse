@@ -15,7 +15,7 @@ namespace MarketTicker;
 /// Streams live crypto prices from Binance's public combined mini-ticker stream (one push per second per pair).
 /// No API key needed. The connection only exists while at least one crypto symbol is being watched.
 /// </summary>
-internal sealed class BinanceStreamClient : IDisposable
+internal sealed partial class BinanceStreamClient : IDisposable
 {
     private const string StreamHost = "wss://stream.binance.com:9443/stream?streams=";
 

@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "MarketTicker (Package)": {
+      "commandName": "MsixPackage",
+      "doNotLaunchApp": true
+    },
+    "MarketTicker (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

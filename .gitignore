@@ -1,0 +1,10 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+AppPackages/
+BundleArtifacts/
+*.msix
+*.msixbundle
+# Keep Properties/launchSettings.json and *.pubxml: MSIX deploy needs them.

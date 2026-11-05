@@ -67,9 +67,13 @@ internal static class Watchlist
             var name = DefaultGroupName;
             var body = line;
 
-            // "crypto:BTC" alone must not be read as a group called "crypto".
+            // "crypto:BTC" (no space after the colon) is a symbol, not a group called "crypto";
+            // "Crypto: crypto:BTC" is a group called "Crypto".
             var colon = line.IndexOf(':', StringComparison.Ordinal);
-            if (colon > 0 && !line[..colon].Trim().Equals("crypto", StringComparison.OrdinalIgnoreCase))
+            var isCryptoSymbol = colon > 0 &&
+                line[..colon].Trim().Equals("crypto", StringComparison.OrdinalIgnoreCase) &&
+                colon + 1 < line.Length && !char.IsWhiteSpace(line[colon + 1]);
+            if (colon > 0 && !isCryptoSymbol)
             {
                 name = line[..colon].Trim();
                 body = line[(colon + 1)..];

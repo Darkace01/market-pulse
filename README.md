@@ -133,3 +133,5 @@ MarketTicker/
 ```
 
 Data is provided as-is by third-party public endpoints. It is not investment advice, and the endpoints may change or rate-limit without notice.
+
+Market Pulse collects no personal data. See the [privacy policy](PRIVACY.md).

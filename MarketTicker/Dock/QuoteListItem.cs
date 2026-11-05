@@ -42,14 +42,18 @@ internal sealed partial class QuoteListItem : ListItem, IDisposable
         _settings = settings;
         _layout = layout;
 
-        MoreCommands =
-        [
-            new CommandContextItem(_copyPrice),
-            new CommandContextItem(new RemoveFromWatchlistCommand(settings, group, symbol)),
-        ];
+        // Dock buttons only get harmless actions: the Dock's right-click menu sits next to its own
+        // pin/unpin items, so a "remove" there is too easily mistaken for removing the band.
+        MoreCommands = [new CommandContextItem(_copyPrice)];
 
         if (layout == QuoteItemLayout.List)
         {
+            MoreCommands =
+            [
+                new CommandContextItem(_copyPrice),
+                new CommandContextItem(new RemoveFromWatchlistCommand(settings, group, symbol)) { IsCritical = true },
+            ];
+
             Section = group;
             Tags = [_priceTag, _changeTag];
         }

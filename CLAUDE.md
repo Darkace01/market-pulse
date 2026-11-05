@@ -87,4 +87,5 @@ There are no unit tests. To verify a change, deploy it, Reload, and read the dia
 ## Conventions
 
 - Commit after each logical step. Write commit messages that explain *why*.
+- No AI attribution: don't add `Co-Authored-By` trailers or "generated with" lines to commits or PRs. The owner is the only contributor.
 - Match the surrounding style: file-scoped namespaces, `sealed partial` classes (CsWinRT needs `partial` on WinRT-exposed types), and brief XML doc comments on types.

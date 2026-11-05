@@ -8,3 +8,6 @@ BundleArtifacts/
 *.msix
 *.msixbundle
 # Keep Properties/launchSettings.json and *.pubxml: MSIX deploy needs them.
+
+# Release packages from build-package.ps1
+artifacts/

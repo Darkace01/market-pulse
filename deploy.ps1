@@ -1,4 +1,4 @@
-# Builds Market Ticker and registers it with Windows, like Visual Studio's "Deploy".
+# Builds Market Pulse and registers it with Windows, like Visual Studio's "Deploy".
 # Requires Developer Mode and the Windows 11 SDK (10.0.26100).
 # Usage: .\deploy.ps1 [-Configuration Debug|Release] [-Platform x64|ARM64]
 param(

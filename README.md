@@ -1,4 +1,4 @@
-# Market Ticker for the PowerToys Command Palette Dock
+# Market Pulse for the PowerToys Command Palette Dock
 
 Live market prices on the [Command Palette Dock](https://learn.microsoft.com/windows/powertoys/command-palette/dock): stocks, indices, FX, commodities and crypto. No API keys needed.
 
@@ -13,12 +13,12 @@ Feeds only run for symbols on a band or page that Command Palette is currently s
 
 Open Dock edit mode (right-click the Dock, then **Edit Dock**), select **+**, and choose any of these:
 
-- **Market Ticker: rotating**: a single button that cycles through every watched market. It takes up the least space.
-- **Market Ticker: all markets**: every watched market in one strip.
-- **Market Ticker: _group_**: one band per watchlist group, such as Indices, Tech or Crypto.
-- **Market Ticker: _symbol_**: one band per individual market.
+- **Market Pulse: rotating**: a single button that cycles through every watched market. It takes up the least space.
+- **Market Pulse: all markets**: every watched market in one strip.
+- **Market Pulse: _group_**: one band per watchlist group, such as Indices, Tech or Crypto.
+- **Market Pulse: _symbol_**: one band per individual market.
 
-Click a price to open its chart. Right-click it to copy the price or remove it from its group.
+Click a price to open its chart. Right-click it to copy the price. To remove a market, use the **Markets** page in Command Palette (right-click → Remove), so a Dock click can never delete one by accident.
 
 ## Choosing markets
 

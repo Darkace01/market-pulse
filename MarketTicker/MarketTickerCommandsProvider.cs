@@ -26,7 +26,7 @@ public partial class MarketTickerCommandsProvider : CommandProvider
 
     public MarketTickerCommandsProvider()
     {
-        DisplayName = "Market Ticker";
+        DisplayName = "Market Pulse";
         Id = "com.darkace.marketticker";
         Icon = IconHelpers.FromRelativePath("Assets\\StoreLogo.png");
 
@@ -98,13 +98,13 @@ public partial class MarketTickerCommandsProvider : CommandProvider
         var bands = new List<MarketBand>();
 
         var rotator = new RotatingTickerItem(all, _data, _settingsManager);
-        bands.Add(new MarketBand(BandIdPrefix + "rotating", "Market Ticker: rotating", [rotator], all, _data, rotator.Start, rotator.Stop));
+        bands.Add(new MarketBand(BandIdPrefix + "rotating", "Market Pulse: rotating", [rotator], all, _data, rotator.Start, rotator.Stop));
 
-        bands.Add(CreateBand("all", "Market Ticker: all markets", groups.SelectMany(g => g.Symbols.Select(s => (s, g.Name))).DistinctBy(p => p.s.Key)));
+        bands.Add(CreateBand("all", "Market Pulse: all markets", groups.SelectMany(g => g.Symbols.Select(s => (s, g.Name))).DistinctBy(p => p.s.Key)));
 
         foreach (var group in groups)
         {
-            bands.Add(CreateBand("group." + group.Slug, $"Market Ticker: {group.Name}", group.Symbols.Select(s => (s, group.Name))));
+            bands.Add(CreateBand("group." + group.Slug, $"Market Pulse: {group.Name}", group.Symbols.Select(s => (s, group.Name))));
         }
 
         foreach (var group in groups)
@@ -113,7 +113,7 @@ public partial class MarketTickerCommandsProvider : CommandProvider
             {
                 if (!bands.Any(b => b.Command?.Id == BandIdPrefix + "symbol." + symbol.Key.ToLowerInvariant()))
                 {
-                    bands.Add(CreateBand("symbol." + symbol.Key.ToLowerInvariant(), $"Market Ticker: {symbol.Label}", [(symbol, group.Name)]));
+                    bands.Add(CreateBand("symbol." + symbol.Key.ToLowerInvariant(), $"Market Pulse: {symbol.Label}", [(symbol, group.Name)]));
                 }
             }
         }

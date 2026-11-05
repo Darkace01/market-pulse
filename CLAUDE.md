@@ -48,6 +48,7 @@ There are no unit tests. To verify a change, deploy it, Reload, and read the dia
 
 - MSIX packaging needs the **Windows 11 SDK 10.0.26100**. Without it, C# still compiles, because the csproj points CsWinRT at the NuGet winmd, but packaging fails with `APPX3217`.
 - `deploy.ps1` builds an unsigned MSIX, extracts it and runs `Add-AppxPackage -Register`. This requires Developer Mode. Don't try to enable Developer Mode or change other security settings for the user; ask them.
+- If `deploy.ps1` fails with `0x80073CFB` ("already installed… in development mode"), `Package.appxmanifest` changed but its version didn't. Bump `Identity Version` (for example `0.0.2.0` → `0.0.3.0`). Don't uninstall the package: that deletes the user's settings and watchlist.
 - After deploying, Command Palette keeps stale band view models until **Reload**. Tell the user to run Reload rather than assuming that deploying was enough.
 - The Store requires versions in the form `X.Y.Z.0` (revision 0). `build-package.ps1` stamps the version and the Store identity into the manifest temporarily, then restores the file.
 

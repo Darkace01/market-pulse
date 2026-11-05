@@ -1,0 +1,142 @@
+# Builds Market Pulse for x64 and ARM64, publishes a GitHub release, and submits the package to the
+# Microsoft Store (which is what the Command Palette Extension Gallery installs from).
+#
+# Trigger: push a tag such as v1.2.0, or run it manually from the Actions tab.
+#
+# Repository variables (Settings > Secrets and variables > Actions > Variables), from Partner Center:
+#   STORE_PRODUCT_ID              e.g. 9NXXXXXXXXXX           (Product identity page)
+#   STORE_IDENTITY_NAME           Package/Identity/Name       (Product identity page)
+#   STORE_PUBLISHER               Package/Identity/Publisher  (e.g. CN=XXXXXXXX-XXXX-...)
+#   STORE_PUBLISHER_DISPLAY_NAME  Package/Properties/PublisherDisplayName
+# Secrets, for automatic Store submission (Partner Center > Account settings > User management > Microsoft Entra applications):
+#   PARTNER_CENTER_TENANT_ID, PARTNER_CENTER_SELLER_ID, PARTNER_CENTER_CLIENT_ID, PARTNER_CENTER_CLIENT_SECRET
+# Optional secrets, to also attach a signed bundle people can sideload:
+#   SIGNING_CERT_PFX_BASE64, SIGNING_CERT_PASSWORD
+#
+# The Store job runs in the "store" environment: add required reviewers there to approve each submission.
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version as MAJOR.MINOR.PATCH (for example 1.2.0)'
+        required: true
+      publish_to_store:
+        description: 'Submit the package to the Microsoft Store'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-2025
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      semver: ${{ steps.version.outputs.semver }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          $semver = if ($env:GITHUB_EVENT_NAME -eq 'push') { $env:REF_NAME.TrimStart('v') } else { $env:INPUT_VERSION.TrimStart('v') }
+          if ($semver -notmatch '^\d+\.\d+\.\d+$') { throw "Version must be MAJOR.MINOR.PATCH, got '$semver'" }
+          # The Store requires the fourth (revision) part to be 0.
+          "version=$semver.0" >> $env:GITHUB_OUTPUT
+          "semver=$semver" >> $env:GITHUB_OUTPUT
+
+      - name: Build packages
+        shell: pwsh
+        env:
+          CERT_BASE64: ${{ secrets.SIGNING_CERT_PFX_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+        run: |
+          $params = @{
+            Version              = '${{ steps.version.outputs.version }}'
+            IdentityName         = '${{ vars.STORE_IDENTITY_NAME }}'
+            Publisher            = '${{ vars.STORE_PUBLISHER }}'
+            PublisherDisplayName = '${{ vars.STORE_PUBLISHER_DISPLAY_NAME }}'
+          }
+          if ($env:CERT_BASE64) {
+            $pfx = Join-Path $env:RUNNER_TEMP 'signing.pfx'
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:CERT_BASE64))
+            $params.CertificatePath = $pfx
+            $params.CertificatePassword = $env:CERT_PASSWORD
+          }
+          ./build-package.ps1 @params
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: artifacts/
+          if-no-files-found: error
+
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: artifacts
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.build.outputs.semver }}
+          target_commitish: ${{ github.sha }}
+          name: Market Pulse ${{ needs.build.outputs.semver }}
+          generate_release_notes: true
+          files: |
+            artifacts/*.msixupload
+            artifacts/*_signed.msixbundle
+
+  store:
+    needs: build
+    if: (github.event_name == 'push' || inputs.publish_to_store) && vars.STORE_PRODUCT_ID != ''
+    runs-on: windows-latest
+    environment: store
+    steps:
+      # msstore expects the project folder alongside the package it uploads.
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: artifacts
+
+      - name: Set up Microsoft Store Developer CLI
+        uses: microsoft/microsoft-store-apppublisher@v1.1
+
+      - name: Configure Microsoft Store Developer CLI
+        shell: pwsh
+        run: >
+          msstore reconfigure
+          --tenantId ${{ secrets.PARTNER_CENTER_TENANT_ID }}
+          --sellerId ${{ secrets.PARTNER_CENTER_SELLER_ID }}
+          --clientId ${{ secrets.PARTNER_CENTER_CLIENT_ID }}
+          --clientSecret ${{ secrets.PARTNER_CENTER_CLIENT_SECRET }}
+
+      - name: Submit to the Microsoft Store
+        shell: pwsh
+        run: |
+          $upload = Get-ChildItem artifacts -Filter '*.msixupload' | Select-Object -First 1
+          msstore publish ./MarketTicker -i $upload.FullName -id '${{ vars.STORE_PRODUCT_ID }}' -v

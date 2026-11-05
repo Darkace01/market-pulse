@@ -57,6 +57,44 @@ After code changes, deploy again and run **Reload**.
 
 > Without the Windows SDK installed, the C# still compiles (the project feeds CsWinRT the metadata from the restored SDK projection package), but MSIX packaging fails with `APPX3217`. Install the SDK component to deploy.
 
+## Publishing
+
+Users install Command Palette extensions from the **Extension Gallery**, which lists packages that live in the Microsoft Store or WinGet. Market Pulse ships through the Store; it signs the package, so users need no certificate or Developer Mode.
+
+**One-time setup**
+
+1. Push this repository to GitHub.
+2. In [Partner Center](https://partner.microsoft.com/dashboard) (free for individuals), reserve the app name **Market Pulse**. From **Product management → Product identity**, copy these values into repository **variables**:
+   - `STORE_PRODUCT_ID`
+   - `STORE_IDENTITY_NAME` (Package/Identity/Name)
+   - `STORE_PUBLISHER` (Package/Identity/Publisher)
+   - `STORE_PUBLISHER_DISPLAY_NAME`
+3. Run **Actions → Release** with version `1.0.0` and leave *publish to Store* unticked. Download the `.msixupload` from the release, then create the first submission in Partner Center by hand: upload the package, fill in the listing using `gallery/darkace/market-pulse` for text and the icon, choose a free price, and submit. The Store requires the first submission to go through the website.
+4. For automatic updates, add a Microsoft Entra app under Partner Center **Account settings → User management** and store these as **secrets**:
+   - `PARTNER_CENTER_TENANT_ID`
+   - `PARTNER_CENTER_SELLER_ID`
+   - `PARTNER_CENTER_CLIENT_ID`
+   - `PARTNER_CENTER_CLIENT_SECRET`
+
+   Create a `store` environment and add yourself as a required reviewer if you want to approve each submission.
+5. Once the app is live, add a `GALLERY_PAT` secret: a token that can fork `microsoft/CmdPal-Extensions` and open PRs. Run **Actions → Gallery listing** with *dry run* unticked. A gallery maintainer reviews and merges the PR.
+
+**Each release:** bump nothing by hand. Push a tag:
+
+```bash
+git tag v1.1.0
+git push origin v1.1.0
+```
+
+The **Release** workflow then:
+- builds x64 and ARM64;
+- attaches the packages to a GitHub release;
+- submits to the Store.
+
+The Store certifies the update in a day or so, and the gallery picks it up automatically.
+
+**Locally:** `.\build-package.ps1 -Version 1.1.0.0` produces the same `artifacts/` (MSIX per platform, `.msixbundle`, `.msixupload`). Run `tools\Test-GalleryListing.ps1` to check the gallery listing, and `powershell -File tools\New-Icons.ps1` to regenerate all icons.
+
 ## Project layout
 
 ```text

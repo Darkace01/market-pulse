@@ -1,0 +1,79 @@
+# Opens (or updates) a pull request that lists Market Pulse in the Command Palette Extension Gallery
+# (microsoft/CmdPal-Extensions). Run it manually once the app is live in the Microsoft Store, and again
+# whenever gallery/darkace/market-pulse changes (description, icon, screenshots).
+#
+# Needs:
+#   vars.STORE_PRODUCT_ID   the Store product ID the gallery installs from
+#   secrets.GALLERY_PAT     a token for the GitHub account that owns the fork, with "public_repo"
+#                           (classic) or Contents + Pull requests write on the fork (fine-grained).
+#                           The built-in GITHUB_TOKEN cannot fork or open PRs in another repository.
+name: Gallery listing
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Only validate and show the listing; do not open a pull request'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare and validate listing
+        shell: pwsh
+        run: >
+          ./tools/Test-GalleryListing.ps1
+          -StoreProductId '${{ vars.STORE_PRODUCT_ID }}'
+          -Homepage '${{ github.server_url }}/${{ github.repository }}'
+          -AuthorUrl '${{ github.server_url }}/${{ github.repository_owner }}'
+          -OutDir "$env:RUNNER_TEMP/listing/darkace/market-pulse"
+
+      - name: Show listing
+        shell: pwsh
+        run: Get-Content "$env:RUNNER_TEMP/listing/darkace/market-pulse/extension.json"
+
+      - name: Open pull request on microsoft/CmdPal-Extensions
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GALLERY_PAT }}
+        run: |
+          set -euo pipefail
+          upstream=microsoft/CmdPal-Extensions
+          login=$(gh api user -q .login)
+          branch=market-pulse-listing
+
+          gh repo fork "$upstream" --clone=false || true
+          gh repo sync "$login/CmdPal-Extensions" --source "$upstream" --branch main || true
+
+          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/$login/CmdPal-Extensions.git" gallery-fork
+          cd gallery-fork
+          git config user.name "$login"
+          git config user.email "$(gh api user -q .id)+$login@users.noreply.github.com"
+          git checkout -B "$branch"
+
+          rm -rf extensions/darkace/market-pulse
+          mkdir -p extensions/darkace
+          cp -r "$RUNNER_TEMP/listing/darkace/market-pulse" extensions/darkace/
+          git add extensions/darkace/market-pulse
+          if git diff --cached --quiet; then
+            echo "Listing is unchanged; nothing to submit."
+            exit 0
+          fi
+          git commit -m "Add darkace.market-pulse to gallery"
+          git push --force origin "$branch"
+
+          if gh pr view "$login:$branch" --repo "$upstream" >/dev/null 2>&1; then
+            echo "Updated the existing pull request."
+          else
+            gh pr create --repo "$upstream" --head "$login:$branch" --base main \
+              --title "Add darkace.market-pulse to gallery" \
+              --body "Adds **Market Pulse**: live stock, index, FX, commodity and crypto prices on the Command Palette Dock. Installs from the Microsoft Store (${{ vars.STORE_PRODUCT_ID }}). Source: ${{ github.server_url }}/${{ github.repository }}"
+          fi

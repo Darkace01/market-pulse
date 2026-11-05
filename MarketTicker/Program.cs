@@ -18,6 +18,10 @@ public class Program
     {
         if (args.Length > 0 && args[0] == "-RegisterProcessAsComServer")
         {
+            Diagnostics.Log("=== extension process started");
+            AppDomain.CurrentDomain.UnhandledException += (_, e) => Diagnostics.Log($"UNHANDLED: {e.ExceptionObject}");
+            TaskScheduler.UnobservedTaskException += (_, e) => Diagnostics.Log($"UNOBSERVED TASK: {e.Exception}");
+
             global::Shmuelie.WinRTServer.ComServer server = new();
 
             ManualResetEvent extensionDisposedEvent = new(false);

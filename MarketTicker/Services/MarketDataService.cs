@@ -73,6 +73,7 @@ internal sealed partial class MarketDataService : IDisposable
     private void Reconcile()
     {
         var all = _subscribers.Values.SelectMany(s => s).ToArray();
+        Diagnostics.Log($"subscriptions: {_subscribers.Count} owner(s), symbols: {string.Join(",", all.Select(s => s.Key).Distinct())}");
         _binance.SetPairs(all.Where(s => s.Source == MarketSource.Binance).Select(s => s.Symbol));
 
         var yahoo = all.Where(s => s.Source == MarketSource.Yahoo).Select(s => s.Symbol).Distinct().Order(StringComparer.Ordinal).ToArray();
@@ -121,6 +122,7 @@ internal sealed partial class MarketDataService : IDisposable
                 catch (Exception ex)
                 {
                     ExtensionHost.LogMessage(new LogMessage { Message = $"MarketTicker: Yahoo poll failed: {ex.Message}" });
+                    Diagnostics.Log($"Yahoo poll failed: {ex}");
                     foreach (var symbol in symbols)
                     {
                         PublishError(symbol, ex.Message);

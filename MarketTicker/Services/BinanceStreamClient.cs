@@ -80,6 +80,7 @@ internal sealed partial class BinanceStreamClient : IDisposable
                 using var socket = new ClientWebSocket();
                 socket.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
                 await socket.ConnectAsync(url, ct).ConfigureAwait(false);
+                Diagnostics.Log($"Binance connected: {string.Join(",", pairs)}");
                 backoff = TimeSpan.FromSeconds(1);
                 await ReceiveAsync(socket, ct).ConfigureAwait(false);
             }
@@ -90,6 +91,7 @@ internal sealed partial class BinanceStreamClient : IDisposable
             catch (Exception ex)
             {
                 ExtensionHost.LogMessage(new LogMessage { Message = $"MarketTicker: Binance stream error: {ex.Message}" });
+                Diagnostics.Log($"Binance stream error: {ex}");
                 foreach (var pair in pairs)
                 {
                     _onError(pair, ex.Message);

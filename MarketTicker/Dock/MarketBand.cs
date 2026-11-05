@@ -58,7 +58,11 @@ internal sealed partial class MarketBandPage : OnLoadDynamicListPage, IDisposabl
         _onUnloaded = onUnloaded;
     }
 
-    public override IListItem[] GetItems() => _items;
+    public override IListItem[] GetItems()
+    {
+        Diagnostics.Log($"band {Id}: GetItems -> {_items.Length} item(s)");
+        return _items;
+    }
 
     // A band has no search box, so its contents never depend on the query.
     public override void UpdateSearchText(string oldSearch, string newSearch)
@@ -67,12 +71,14 @@ internal sealed partial class MarketBandPage : OnLoadDynamicListPage, IDisposabl
 
     protected override void Loaded()
     {
+        Diagnostics.Log($"band {Id}: loaded");
         _data.Subscribe(this, _symbols);
         _onLoaded?.Invoke();
     }
 
     protected override void Unloaded()
     {
+        Diagnostics.Log($"band {Id}: unloaded");
         _data.Unsubscribe(this);
         _onUnloaded?.Invoke();
     }

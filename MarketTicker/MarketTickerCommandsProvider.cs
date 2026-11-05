@@ -68,6 +68,7 @@ public partial class MarketTickerCommandsProvider : CommandProvider
     {
         lock (_bandsLock)
         {
+            Diagnostics.Log($"GetDockBands -> {_bands.Length} band(s)");
             return _bands;
         }
     }

@@ -13,6 +13,8 @@ param(
     [string]$StoreProductId,
     [string]$Homepage,
     [string]$AuthorUrl,
+    # Adds WinGet as a second install source; only once the package is live in winget-pkgs.
+    [string]$WinGetId,
     [string]$OutDir
 )
 
@@ -30,6 +32,9 @@ $ext = Get-Content $jsonPath -Raw | ConvertFrom-Json
 if ($StoreProductId) { ($ext.installSources | Where-Object type -eq 'msstore').id = $StoreProductId }
 if ($Homepage) { $ext.homepage = $Homepage }
 if ($AuthorUrl) { $ext.author.url = $AuthorUrl }
+if ($WinGetId -and -not ($ext.installSources | Where-Object type -eq 'winget')) {
+    $ext.installSources = @($ext.installSources) + [pscustomobject]@{ type = 'winget'; id = $WinGetId }
+}
 if ($OutDir) { $ext | ConvertTo-Json -Depth 10 | Set-Content $jsonPath -Encoding utf8NoBOM }
 
 $errors = @()

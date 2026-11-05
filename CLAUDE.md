@@ -9,6 +9,8 @@ PowerToys Command Palette extension that shows live market prices on the **Dock*
 | Build and register locally (needs Developer Mode) | `.\deploy.ps1`, then run **Reload** in Command Palette |
 | Release packages (x64 + ARM64, bundle, `.msixupload`) | `.\build-package.ps1 -Version 1.2.3.0` → `artifacts/` |
 | Validate the gallery listing | `pwsh tools\Test-GalleryListing.ps1` |
+| WinGet manifests from a signed package | `pwsh tools\New-WinGetManifest.ps1 -Version 1.2.0.0 -PackagePath <pkg> -InstallerUrl <url> -RepositoryUrl <repo>`, then `winget validate --manifest <dir>` |
+| Publish a Store release to WinGet (interactive, user only) | `.\tools\Get-StorePackage.ps1 -Version 1.2.0` |
 | Regenerate all icons | `powershell -File tools\New-Icons.ps1` (Windows PowerShell 5.1: it uses System.Drawing) |
 | Compile-only check | `dotnet build MarketTicker\MarketTicker.csproj -p:Platform=x64` |
 
@@ -22,7 +24,11 @@ There are no unit tests. To verify a change, deploy it, Reload, and read the dia
 - `Models/`: `MarketSymbol` (entry parsing: `crypto:` prefix, ` as Label`), `Watchlist` (multi-line `Group: a, b` text), `Quote` (formatting).
 - `Helpers/SettingsManager.cs`: toolkit `JsonSettingsManager`. `Helpers/Diagnostics.cs` is the file log.
 - `gallery/darkace/market-pulse/`: Extension Gallery listing (`extension.json` + `icon.png`, optional `screenshots/`).
-- `.github/workflows/`: `ci.yml` (build + validate), `release.yml` (tag `v*.*.*` → GitHub release → Store), `gallery.yml` (PR to microsoft/CmdPal-Extensions).
+- `.github/workflows/`:
+  - `ci.yml`: build and validate;
+  - `release.yml`: on a `v*.*.*` tag, GitHub release, then Store;
+  - `winget.yml`: PR to microsoft/winget-pkgs;
+  - `gallery.yml`: PR to microsoft/CmdPal-Extensions.
 
 ## Rules that are easy to break
 
@@ -60,7 +66,14 @@ There are no unit tests. To verify a change, deploy it, Reload, and read the dia
 
 ## Publishing
 
-- The Extension Gallery doesn't host packages. It points at a Microsoft Store or WinGet ID, and we use the Store. The first Store submission is manual in Partner Center; later ones go through `release.yml`. The README's "Publishing" section lists the variables and secrets it needs.
+- The Extension Gallery doesn't host packages. It points at a Microsoft Store ID and/or a WinGet ID; we list both (the WinGet one only after its first PR is merged).
+- **One package identity everywhere.** WinGet (`DarkAce.MarketPulse`) ships the *Store-signed* bundle, attached to the GitHub release as `MarketPulse_<ver>_store*.msix[bundle]`. Never point WinGet at our own unsigned or self-signed build. A different publisher would create a second package family, and users could end up with two copies of the extension.
+- **Release order:**
+  1. Push a tag; `release.yml` submits to the Store.
+  2. Wait for Store certification.
+  3. The user runs `tools/Get-StorePackage.ps1`. It needs an interactive Microsoft Entra ID sign-in, so CI can't do it. The script attaches the Store package and starts `winget.yml`, which uses `wingetcreate submit`.
+- The first Store submission is manual in Partner Center. The README's "Publishing" section lists the variables and secrets (including `COMMUNITY_PAT`, which is used for the winget-pkgs and gallery PRs).
+- WinGet manifests need the `windows-commandpalette-extension` tag; Command Palette discovers extensions by it. `PackageFamilyName` is computed from the signed package's publisher. `New-WinGetManifest.ps1` does this and refuses unsigned packages.
 - Keep `gallery/.../extension.json` valid against the gallery schema:
   - `id` must match the folder path;
   - `shortDescription` ≤ 200 characters;
@@ -69,7 +82,7 @@ There are no unit tests. To verify a change, deploy it, Reload, and read the dia
   - icon PNG ≤ 100 KB.
 
   The msstore id stays as the placeholder `STORE_PRODUCT_ID` in the repo; `gallery.yml` fills it in from `vars.STORE_PRODUCT_ID`.
-- Pushing tags, running the Store or gallery workflows, and opening PRs on `microsoft/CmdPal-Extensions` are public actions. Do them only when the user asks.
+- Pushing tags, running the Store, WinGet or gallery workflows, and opening PRs on `microsoft/winget-pkgs` or `microsoft/CmdPal-Extensions` are public actions. Do them only when the user asks.
 
 ## Conventions
 

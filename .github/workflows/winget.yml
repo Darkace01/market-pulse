@@ -1,0 +1,77 @@
+# Submits a Market Pulse version to WinGet (microsoft/winget-pkgs) as DarkAce.MarketPulse.
+#
+# WinGet installs the Store-signed package, which tools/Get-StorePackage.ps1 downloads (it needs an
+# interactive Microsoft Entra ID sign-in) and attaches to the GitHub release as
+# MarketPulse_<version>_store*.msix[bundle]. That script then starts this workflow; you can also run
+# it by hand from the Actions tab.
+#
+# Needs secrets.COMMUNITY_PAT: a token for the GitHub account that owns your fork of winget-pkgs
+# (classic: public_repo; fine-grained: Contents + Pull requests write on the fork).
+name: WinGet
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Released version as MAJOR.MINOR.PATCH (for example 1.2.0)'
+        required: true
+      dry_run:
+        description: 'Only generate and validate the manifests; do not open a pull request'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Store-signed package from the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $semver = '${{ inputs.version }}'.TrimStart('v')
+          if ($semver -notmatch '^\d+\.\d+\.\d+$') { throw "Version must be MAJOR.MINOR.PATCH, got '$semver'" }
+          gh release download "v$semver" --pattern '*_store*' --dir store
+          if ($LASTEXITCODE -ne 0 -or -not (Get-ChildItem store -File)) {
+            throw "Release v$semver has no MarketPulse_*_store package. Run tools/Get-StorePackage.ps1 -Version $semver first."
+          }
+          "SEMVER=$semver" >> $env:GITHUB_ENV
+
+      - name: Generate manifests
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem store -File
+          $urls = $files | ForEach-Object { "${{ github.server_url }}/${{ github.repository }}/releases/download/v$env:SEMVER/$($_.Name)" }
+          $dir = ./tools/New-WinGetManifest.ps1 -Version "$env:SEMVER.0" `
+            -PackagePath $files.FullName -InstallerUrl $urls `
+            -RepositoryUrl '${{ github.server_url }}/${{ github.repository }}' `
+            -OutDir "$env:RUNNER_TEMP/winget" | Select-Object -Last 1
+          "MANIFEST_DIR=$dir" >> $env:GITHUB_ENV
+          Get-ChildItem $dir | ForEach-Object { "--- $($_.Name)"; Get-Content $_.FullName }
+
+      - name: Validate manifests
+        shell: pwsh
+        run: |
+          if (Get-Command winget -ErrorAction SilentlyContinue) {
+            winget validate --manifest $env:MANIFEST_DIR
+            if ($LASTEXITCODE -ne 0) { throw "winget validate failed" }
+          } else {
+            Write-Host "winget is not on this runner; winget-pkgs CI will validate the pull request."
+          }
+
+      - name: Open pull request on microsoft/winget-pkgs
+        if: ${{ !inputs.dry_run }}
+        shell: pwsh
+        env:
+          WINGET_TOKEN: ${{ secrets.COMMUNITY_PAT }}
+        run: |
+          if (-not $env:WINGET_TOKEN) { throw "Add the COMMUNITY_PAT secret first." }
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          ./wingetcreate.exe submit --token $env:WINGET_TOKEN `
+            --prtitle "New version: DarkAce.MarketPulse version $env:SEMVER.0" $env:MANIFEST_DIR
+          if ($LASTEXITCODE -ne 0) { throw "wingetcreate submit failed" }

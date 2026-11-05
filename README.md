@@ -59,7 +59,13 @@ After code changes, deploy again and run **Reload**.
 
 ## Publishing
 
-Users install Command Palette extensions from the **Extension Gallery**, which lists packages that live in the Microsoft Store or WinGet. Market Pulse ships through the Store; it signs the package, so users need no certificate or Developer Mode.
+Users install Command Palette extensions from the **Extension Gallery**, from **WinGet**, or from the **Microsoft Store**. Market Pulse uses the same Store-signed package for all three, so there is one package identity, and users need no certificate or Developer Mode:
+
+```bash
+winget install DarkAce.MarketPulse
+```
+
+Command Palette's **Search WinGet** also finds it, via the `windows-commandpalette-extension` tag.
 
 **One-time setup**
 
@@ -77,23 +83,41 @@ Users install Command Palette extensions from the **Extension Gallery**, which l
    - `PARTNER_CENTER_CLIENT_SECRET`
 
    Create a `store` environment and add yourself as a required reviewer if you want to approve each submission.
-5. Once the app is live, add a `GALLERY_PAT` secret: a token that can fork `microsoft/CmdPal-Extensions` and open PRs. Run **Actions → Gallery listing** with *dry run* unticked. A gallery maintainer reviews and merges the PR.
+5. Add a `COMMUNITY_PAT` secret: a GitHub token that can fork repositories and open PRs (classic `public_repo`). Both the WinGet and gallery workflows use it.
+6. Once the Store has published the app, publish it to WinGet (see *Each release*, steps 2–3). When the first WinGet PR is merged, run **Actions → Gallery listing** with *dry run* unticked and *include WinGet* ticked. A gallery maintainer then reviews and merges that PR.
 
-**Each release:** bump nothing by hand. Push a tag:
+**Each release**
 
-```bash
-git tag v1.1.0
-git push origin v1.1.0
-```
+1. Push a tag. The **Release** workflow then:
+   - builds x64 and ARM64;
+   - attaches the packages to a GitHub release;
+   - submits to the Store.
 
-The **Release** workflow then:
-- builds x64 and ARM64;
-- attaches the packages to a GitHub release;
-- submits to the Store.
+   ```bash
+   git tag v1.1.0
+   git push origin v1.1.0
+   ```
 
-The Store certifies the update in a day or so, and the gallery picks it up automatically.
+2. Wait for Store certification (usually a day or so) and for the Store to serve the update.
+3. Run this, which needs the GitHub CLI signed in to this repo:
 
-**Locally:** `.\build-package.ps1 -Version 1.1.0.0` produces the same `artifacts/` (MSIX per platform, `.msixbundle`, `.msixupload`). Run `tools\Test-GalleryListing.ps1` to check the gallery listing, and `powershell -File tools\New-Icons.ps1` to regenerate all icons.
+   ```powershell
+   .\tools\Get-StorePackage.ps1 -Version 1.1.0
+   ```
+
+   It:
+   - downloads the Store-signed package with `winget download`, which asks you to sign in with your Microsoft Entra ID work account (personal Microsoft accounts aren't accepted for this);
+   - checks the package is signed by Microsoft Marketplace and is the right version;
+   - attaches it to the `v1.1.0` release;
+   - starts the **WinGet** workflow, which generates and validates the manifests and opens a PR on `microsoft/winget-pkgs`. WinGet's reviewers merge it, usually within a day.
+
+The gallery follows the Store and WinGet automatically, so it needs no per-release step.
+
+**Locally:**
+- `.\build-package.ps1 -Version 1.1.0.0` produces the same `artifacts/`: an MSIX per platform, the `.msixbundle` and the `.msixupload`.
+- `tools\New-WinGetManifest.ps1` writes WinGet manifests from a signed package. Check them with `winget validate --manifest <dir>`.
+- `tools\Test-GalleryListing.ps1` checks the gallery listing.
+- `powershell -File tools\New-Icons.ps1` regenerates all icons.
 
 ## Project layout
 

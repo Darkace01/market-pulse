@@ -4,7 +4,7 @@
 #
 # Needs:
 #   vars.STORE_PRODUCT_ID   the Store product ID the gallery installs from
-#   secrets.GALLERY_PAT     a token for the GitHub account that owns the fork, with "public_repo"
+#   secrets.COMMUNITY_PAT   a token for the GitHub account that owns the fork, with "public_repo"
 #                           (classic) or Contents + Pull requests write on the fork (fine-grained).
 #                           The built-in GITHUB_TOKEN cannot fork or open PRs in another repository.
 name: Gallery listing
@@ -16,6 +16,10 @@ on:
         description: 'Only validate and show the listing; do not open a pull request'
         type: boolean
         default: true
+      include_winget:
+        description: 'Also list WinGet (DarkAce.MarketPulse) as an install source; tick once it is live in winget-pkgs'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -33,6 +37,7 @@ jobs:
           -StoreProductId '${{ vars.STORE_PRODUCT_ID }}'
           -Homepage '${{ github.server_url }}/${{ github.repository }}'
           -AuthorUrl '${{ github.server_url }}/${{ github.repository_owner }}'
+          -WinGetId '${{ inputs.include_winget && 'DarkAce.MarketPulse' || '' }}'
           -OutDir "$env:RUNNER_TEMP/listing/darkace/market-pulse"
 
       - name: Show listing
@@ -43,7 +48,7 @@ jobs:
         if: ${{ !inputs.dry_run }}
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GALLERY_PAT }}
+          GH_TOKEN: ${{ secrets.COMMUNITY_PAT }}
         run: |
           set -euo pipefail
           upstream=microsoft/CmdPal-Extensions
@@ -75,5 +80,5 @@ jobs:
           else
             gh pr create --repo "$upstream" --head "$login:$branch" --base main \
               --title "Add darkace.market-pulse to gallery" \
-              --body "Adds **Market Pulse**: live stock, index, FX, commodity and crypto prices on the Command Palette Dock. Installs from the Microsoft Store (${{ vars.STORE_PRODUCT_ID }}). Source: ${{ github.server_url }}/${{ github.repository }}"
+              --body "Adds **Market Pulse**: live stock, index, FX, commodity and crypto prices on the Command Palette Dock. Installs from the Microsoft Store (${{ vars.STORE_PRODUCT_ID }})${{ inputs.include_winget && ' and WinGet (DarkAce.MarketPulse)' || '' }}. Source: ${{ github.server_url }}/${{ github.repository }}"
           fi

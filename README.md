@@ -53,6 +53,8 @@ Prerequisites: Windows 11, PowerToys with Command Palette enabled, Developer Mod
 
 After code changes, deploy again and run **Reload**.
 
+**Without Visual Studio:** `.\deploy.ps1` (or `.\deploy.ps1 -Configuration Release`) builds an unsigned package and registers it in place. This is the same as Deploy, so it also needs Developer Mode.
+
 > Without the Windows SDK installed, the C# still compiles (the project feeds CsWinRT the metadata from the restored SDK projection package), but MSIX packaging fails with `APPX3217`. Install the SDK component to deploy.
 
 ## Project layout
